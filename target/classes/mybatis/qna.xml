@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="qna">
+
+<resultMap type="QnaVO" id="QnaVOResultMap">
+  <result property="qnano" column="qnano" javaType="java.lang.Integer" jdbcType="INTEGER"/>
+  <result property="seqno" column="seqno" javaType="java.lang.Integer" jdbcType="INTEGER"/>
+  <result property="qnatype" column="qnatype" javaType="java.lang.String" jdbcType="VARCHAR"/>
+  <result property="title" column="title" javaType="java.lang.String" jdbcType="VARCHAR" />
+  <result property="content" column="content" javaType="java.lang.String" jdbcType="CLOB" />
+  <result property="memberno" column="memberno" javaType="java.lang.Integer" jdbcType="INTEGER" />
+  <result property="mname" column="mname" javaType="java.lang.String" jdbcType="VARCHAR" />
+  <result property="cnt" column="cnt" javaType="java.lang.Integer" jdbcType="INTEGER" />
+  <result property="rdate" column="rdate" javaType="java.lang.String" jdbcType="DATE" />
+  <result property="qpasswd" column="qpasswd" javaType="java.lang.String" jdbcType="VARCHAR" />
+  <result property="statement" column="statement" javaType="java.lang.Integer" jdbcType="INTEGER"/>
+  <result property="indent" column="indent" javaType="java.lang.Integer" jdbcType="INTEGER"/>
+  <result property="ansnum" column="ansnum" javaType="java.lang.Integer" jdbcType="INTEGER"/>
+</resultMap>
+
+  <!-- 등록 -->
+  <insert id="create" parameterType="QnaVO">
+    INSERT INTO qna(qnano, seqno, qnatype, title, content, 
+                    memberno, mname, cnt, rdate, qpasswd, statement, indent, ansnum)
+    VALUES((select NVL(MAX(qnano),0 ) +1 as qnano from qna), #{seqno}, #{qnatype}, #{title}, #{content:VARCHAR},
+             #{memberno}, #{mname}, 0, SYSDATE, #{qpasswd}, 0, (select NVL(MAX(qnano),0 ) +1 as qnano from qna), #{ansnum})
+  </insert>
+    
+    <!--  목록 -->
+  <select id="list" resultType="QnaVO">
+    SELECT qnano, seqno, qnatype, title, content, memberno, mname, cnt, rdate, qpasswd, statement, indent, ansnum
+    FROM qna
+    ORDER BY qnano DESC
+  </select>
+  
+  <!-- 종류별 검색 목록 -->
+  <select id="list2" resultType="QnaVO" parameterType="HashMap">
+    SELECT qnano, seqno, qnatype, title, content, memberno, mname, cnt, rdate, qpasswd, statement, indent, ansnum , r
+    FROM (
+            SELECT qnano, seqno, qnatype, title, content, memberno, mname, cnt, rdate, qpasswd, statement, indent, ansnum, rownum as r
+            FROM(
+                  SELECT qnano, seqno, qnatype, title, content, memberno, mname, cnt, rdate, qpasswd, statement, indent, ansnum
+                  FROM qna
+                  <choose>
+                    <when test="col == 'qnatype'">
+                      WHERE qnatype LIKE '%' || #{word} || '%'
+                      ORDER BY seqno DESC, indent DESC, ansnum ASC
+                    </when>
+                    <when test="col == 'title'">
+                      WHERE title LIKE '%' || #{word} || '%'
+                      ORDER BY seqno DESC, indent DESC, ansnum ASC
+                    </when>
+                    <when test="col == 'mname'">
+                      WHERE mname LIKE '%' || #{word} || '%'
+                      ORDER BY seqno DESC, indent DESC, ansnum ASC
+                    </when>
+                    <otherwise>
+                        ORDER BY seqno DESC, indent DESC, ansnum ASC
+                    </otherwise>
+                  </choose>
+            )
+    ) 
+    WHERE <![CDATA[ r >= #{startNum} AND r <= #{endNum} ]]>
+  </select>
+  
+  <!-- 검색 갯수 -->
+  <select id="search_count" resultType="int" parameterType="HashMap">
+    SELECT COUNT(*) as cnt
+    FROM qna
+    <choose>
+      <when test="col == 'qnano'">
+        WHERE qnano LIKE '%' || #{word} || '%'
+      </when>
+      <when test="col == 'qnatype'">
+        WHERE qnatype LIKE '%' || #{word} || '%'
+      </when>
+      <when test="col == 'title'">
+        WHERE title LIKE '%' || #{word} || '%'
+      </when>
+      <when test="col == 'mname'">
+        WHERE mname LIKE '%' || #{word} || '%'
+      </when>
+      <otherwise>
+      </otherwise>
+    </choose>
+  </select> 
+
+<!--  한 건 조회 -->
+  <select id="read" resultMap="QnaVOResultMap" parameterType="int">
+    SELECT qnano, seqno, qnatype, title, content, memberno, mname, cnt, rdate, qpasswd, statement, indent, ansnum
+    FROM qna
+    WHERE qnano = #{qnano}
+  </select>
+  
+  <!-- 조회수 -->
+  <update id="cnt" parameterType="int">
+    UPDATE qna
+    SET cnt = cnt + 1
+    WHERE qnano = #{qnano}
+  </update>
+  
+  <!--  수정  -->
+  <update id="update" parameterType="QnaVO">
+    UPDATE qna
+    SET qnatype=#{qnatype}, title=#{title}, content=#{content}, qpasswd=#{qpasswd}
+    WHERE qnano = #{qnano}
+  </update>
+  
+  <!--  삭제 -->
+  <delete id="delete" parameterType="int">
+    DELETE FROM qna
+    WHERE indent = #{qnano}
+  </delete>
+  
+  <!-- 권한 조회 -->
+  <select id="act" parameterType="int" resultType="String">
+    SELECT mact
+    FROM member
+    WHERE memberno=#{memberno}
+  </select>
+  
+  <!-- 답변 등록 -->
+  <insert id="reply" parameterType="QnaVO">
+    INSERT INTO qna(qnano, seqno, qnatype, title, content, 
+                    memberno, mname, cnt, rdate, qpasswd, statement, indent, ansnum)
+    VALUES((select NVL(MAX(qnano),0 ) +1 as qnano from qna), #{seqno}, #{qnatype}, #{title}, #{content:VARCHAR},
+             #{memberno}, #{mname}, 0, SYSDATE, #{qpasswd}, 0, #{indent}, #{ansnum})
+  </insert>
+  
+  <!--  처리중 처리완료 변경 -->
+  <update id="update_statement" parameterType="int">
+    UPDATE qna
+    SET statement = 1
+    WHERE qnano = #{qnano}
+  </update>
+</mapper>
